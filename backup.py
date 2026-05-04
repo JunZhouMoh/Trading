@@ -250,7 +250,7 @@ class PolymarketLive:
                 if not self.current_token_ids:
                     print(f"❌ Could not load market for slug {new_slug}")
                 self.traded = False  # Reset trade flag for new market
-
+            self.strike_price = self.current_token_ids.get("strike_price", 0.0) if self.current_token_ids else 0.0
             diff = btc_price - self.strike_price
             status = "🟢 UP" if diff > 0 else "🔴 DOWN"
             self.current_market_price_yes = self.get_market_price(self.current_token_ids['yes_token']) if self.current_token_ids else 0.0
