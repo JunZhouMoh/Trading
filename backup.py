@@ -243,12 +243,9 @@ class PolymarketLive:
             if window_start > self.current_market_start:
                 new_slug = self.get_current_5m_slug()
                 market_data = self.get_market_ids(new_slug)
-                if not market_data:
-                    print(f"❌ Market not ready yet for slug {new_slug}. Waiting for strike price...")
-                    return
 
                 self.current_token_ids = market_data
-                self.strike_price = market_data.get("strike_price", 0.0)
+                self.strike_price = float(payload.get("value", 0))
                 self.current_market_start = window_start
                 print(f"\n{'='*40}\n✨ NEW MARKET: {new_slug} | Strike Price: ${self.strike_price}\nBTC Feed: ${btc_price}\nStarting time: {time.ctime(window_start)}\n{'='*40} ")
                 self.traded = False  # Reset trade flag for new market
