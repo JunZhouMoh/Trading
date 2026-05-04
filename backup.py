@@ -104,6 +104,7 @@ class PolymarketLive:
             raw_tokens = market.get("clobTokenIds")
             token_ids = json.loads(raw_tokens) if isinstance(raw_tokens, str) else raw_tokens
             question = market.get("question") or ""
+            print("question",question)
             match = re.search(r"\$([\d,]+\.?\d*)", question)
             strike_price = float(match.group(1).replace(",", "")) if match else 0.0
             print(f"🔍 Fetched New Market: {question} | Strike Price: ${strike_price} | Yes Token: {token_ids[0]} | No Token: {token_ids[1]}")
