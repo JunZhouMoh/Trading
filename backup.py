@@ -240,17 +240,21 @@ class PolymarketLive:
                 
             # Market Rotation
             if window_start > self.current_market_start:
-                self.current_market_start = window_start
                 new_slug = self.get_current_5m_slug()
-                self.current_token_ids = self.get_market_ids(new_slug)
-                print(self.current_token_ids)
-                self.strike_price = self.current_token_ids.get("strike_price", 0.0) if self.current_token_ids else 0.0
+                market_data = self.get_market_ids(new_slug)
+                if not market_data:
+                    print(f"❌ Market not ready yet for slug {new_slug}. Waiting for strike price...")
+                    return
 
+                self.current_token_ids = market_data
+                self.strike_price = market_data.get("strike_price", 0.0)
+                self.current_market_start = window_start
                 print(f"\n{'='*40}\n✨ NEW MARKET: {new_slug} | Strike Price: ${self.strike_price}\nBTC Feed: ${btc_price}\nStarting time: {time.ctime(window_start)}\n{'='*40} ")
-                if not self.current_token_ids:
-                    print(f"❌ Could not load market for slug {new_slug}")
                 self.traded = False  # Reset trade flag for new market
-            self.strike_price = self.current_token_ids.get("strike_price", 0.0) if self.current_token_ids else 0.0
+
+            if not self.current_token_ids:
+                return
+
             diff = btc_price - self.strike_price
             status = "🟢 UP" if diff > 0 else "🔴 DOWN"
             self.current_market_price_yes = self.get_market_price(self.current_token_ids['yes_token']) if self.current_token_ids else 0.0
@@ -325,8 +329,11 @@ if __name__ == "__main__":
     
     if ids:
         bot.current_token_ids = ids
+        bot.strike_price = ids.get("strike_price", 0.0)
         # Start the Polymarket Price Stream
         bot.start_poly_wss([ids['yes_token'], ids['no_token']])
+    else:
+        print(f"❌ Initial market not ready for slug {initial_slug}. Waiting for the first market window.")
     
     # Start the BTC Price Stream (Primary Thread)
     bot.run()
