@@ -79,7 +79,7 @@ class PolymarketLive:
             order_args = OrderArgs(
                 token_id=token_id,
                 price=price,
-                size=5,
+                size=float(os.getenv("ORDER_SIZE", 5.0)),  # Default to 5.0 if not set
                 side=BUY
             )
             print(order_args)
@@ -254,6 +254,7 @@ class PolymarketLive:
             if trade and diff <30000:  # Basic sanity check to avoid crazy signals                
                 # Execute the buy order
                 if self.traded!=True:
+                    print(trade)
                     self.traded = True
                     result = self.execute_buy(
                     token_id=trade['token'],
