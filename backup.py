@@ -243,6 +243,7 @@ class PolymarketLive:
                 self.current_market_start = window_start
                 new_slug = self.get_current_5m_slug()
                 self.current_token_ids = self.get_market_ids(new_slug)
+                print(self.current_token_ids)
                 self.strike_price = self.current_token_ids.get("strike_price", 0.0) if self.current_token_ids else 0.0
 
                 print(f"\n{'='*40}\n✨ NEW MARKET: {new_slug} | Strike Price: ${self.strike_price}\nBTC Feed: ${btc_price}\nStarting time: {time.ctime(window_start)}\n{'='*40} ")
