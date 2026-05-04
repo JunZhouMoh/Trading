@@ -227,7 +227,7 @@ class PolymarketLive:
             data = json.loads(message)
             payload = data.get("payload", {})
             
-            btc_price = float(payload.get("value", 0))
+            btc_price = self.current_token_ids.get("strike_price", 0.0)
 
             now = time.time()
             window_start = int(now - (now % 300))
