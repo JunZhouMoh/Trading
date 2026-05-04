@@ -85,7 +85,6 @@ class PolymarketLive:
             print(order_args)
             response = self.client.create_and_post_order(order_args)
             
-            print(f"✅ Buy order placed! Order ID: {response.get('orderID')}")
             print(f"   Status: {response.get('status')}")
             
             return response
@@ -103,7 +102,7 @@ class PolymarketLive:
             market = data[0]
             raw_tokens = market.get("clobTokenIds")
             token_ids = json.loads(raw_tokens) if isinstance(raw_tokens, str) else raw_tokens
-            print(f"🔍 Fetched Market: {market.get('question')} | Yes Token: {token_ids[0]} | No Token: {token_ids[1]}")
+            print(f"🔍 Fetched New Market: {market.get('question')} | Yes Token: {token_ids[0]} | No Token: {token_ids[1]}")
             return {
                 "question": market.get("question"),
                 "yes_token": token_ids[0],
@@ -212,8 +211,6 @@ class PolymarketLive:
         token_id = self.current_token_ids[target_side]
         self.current_market_price = self.get_market_price(token_id)
 
-        print(f"| Poly Price: ${self.current_market_price:.2f}", end="")
-
         if self.current_market_price > MAX_PRICE_LIMIT:
             return None
 
@@ -252,7 +249,7 @@ class PolymarketLive:
             self.current_market_price_no = self.get_market_price(self.current_token_ids['no_token']) if self.current_token_ids else 0.0
             trade = self.evaluate_trade(btc_price, seconds_left)
                 
-            print(f"💰 BTC: ${btc_price:,.2f} | Diff: {diff:+.2f} ({status}) | ⏳ {int(seconds_left)}s left | market_price_yes: ${self.current_market_price_yes:.2f} | market_price_no: ${self.current_market_price_no:.2f}", end="\r" )
+            ##print(f"💰 BTC: ${btc_price:,.2f} | Diff: {diff:+.2f} ({status}) | ⏳ {int(seconds_left)}s left | market_price_yes: ${self.current_market_price_yes:.2f} | market_price_no: ${self.current_market_price_no:.2f}", end="\r" )
                 
             if trade and diff <30000:  # Basic sanity check to avoid crazy signals                
                 # Execute the buy order
