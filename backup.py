@@ -184,7 +184,7 @@ class PolymarketLive:
         BASE_DIFF = 30
         STEP_TIME = 60
         MAX_TIME = 300
-        MAX_PRICE_LIMIT = 0.90
+        MAX_PRICE_LIMIT = float(os.getenv("MAX_PRICE_LIMIT", 0.9))  # Default to 0.5 if not set
 
         if not self.current_token_ids:
             return None
@@ -219,7 +219,7 @@ class PolymarketLive:
             "token": token_id,
             "label": "YES" if target_side == 'yes_token' else "NO",
             "price": self.current_market_price,
-            "confidence": "HIGH" if abs(diff) > (BASE_DIFF * 2) else "MED"
+            "diff": diff
         }
 
     def on_message(self, ws, message):
@@ -249,7 +249,7 @@ class PolymarketLive:
             self.current_market_price_no = self.get_market_price(self.current_token_ids['no_token']) if self.current_token_ids else 0.0
             trade = self.evaluate_trade(btc_price, seconds_left)
                 
-            ##print(f"💰 BTC: ${btc_price:,.2f} | Diff: {diff:+.2f} ({status}) | ⏳ {int(seconds_left)}s left | market_price_yes: ${self.current_market_price_yes:.2f} | market_price_no: ${self.current_market_price_no:.2f}", end="\r" )
+            print(f"💰 BTC: ${btc_price:,.2f} | Diff: {diff:+.2f} ({status}) | ⏳ {int(seconds_left)}s left | market_price_yes: ${self.current_market_price_yes:.2f} | market_price_no: ${self.current_market_price_no:.2f}", end="\r" )
                 
             if trade and diff <30000:  # Basic sanity check to avoid crazy signals                
                 # Execute the buy order
