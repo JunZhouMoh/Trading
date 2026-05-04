@@ -6,6 +6,7 @@ import requests
 import os
 import asyncio
 import websockets
+import re
 ##from py_clob_client.client import ClobClient
 ##from py_clob_client.clob_types import OrderArgs
 ##from py_clob_client.order_builder.constants import BUY
@@ -102,11 +103,15 @@ class PolymarketLive:
             market = data[0]
             raw_tokens = market.get("clobTokenIds")
             token_ids = json.loads(raw_tokens) if isinstance(raw_tokens, str) else raw_tokens
-            print(f"🔍 Fetched New Market: {market.get('question')} | Yes Token: {token_ids[0]} | No Token: {token_ids[1]}")
+            question = market.get("question") or ""
+            match = re.search(r"\$([\d,]+\.?\d*)", question)
+            strike_price = float(match.group(1).replace(",", "")) if match else 0.0
+            print(f"🔍 Fetched New Market: {question} | Strike Price: ${strike_price} | Yes Token: {token_ids[0]} | No Token: {token_ids[1]}")
             return {
-                "question": market.get("question"),
+                "question": question,
                 "yes_token": token_ids[0],
-                "no_token": token_ids[1]
+                "no_token": token_ids[1],
+                "strike_price": strike_price
             }
         except Exception as e:
             print(f"❌ Gamma API Error: {e}")
@@ -227,7 +232,7 @@ class PolymarketLive:
             data = json.loads(message)
             payload = data.get("payload", {})
             
-            btc_price = self.current_token_ids.get("strike_price", 0.0)
+            btc_price = float(payload.get("value", 0))
 
             now = time.time()
             window_start = int(now - (now % 300))
@@ -235,12 +240,14 @@ class PolymarketLive:
                 
             # Market Rotation
             if window_start > self.current_market_start:
-                self.strike_price = self.current_token_ids.get("strike_price", 0.0)
                 self.current_market_start = window_start
                 new_slug = self.get_current_5m_slug()
                 self.current_token_ids = self.get_market_ids(new_slug)
+                self.strike_price = self.current_token_ids.get("strike_price", 0.0) if self.current_token_ids else 0.0
 
-                print(f"\n{'='*40}\n✨ NEW MARKET: {new_slug} | Starting Bitcoin value: ${btc_price}\nStarting time: {time.ctime(window_start)}\n{'='*40} ")
+                print(f"\n{'='*40}\n✨ NEW MARKET: {new_slug} | Strike Price: ${self.strike_price}\nBTC Feed: ${btc_price}\nStarting time: {time.ctime(window_start)}\n{'='*40} ")
+                if not self.current_token_ids:
+                    print(f"❌ Could not load market for slug {new_slug}")
                 self.traded = False  # Reset trade flag for new market
 
             diff = btc_price - self.strike_price
