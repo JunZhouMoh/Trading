@@ -34,6 +34,7 @@ class PolymarketLive:
         self.traded = False  # Flag to prevent multiple trades in the same market
         self.current_market_price_yes = 0.0
         self.current_market_price_no = 0.0
+        self.trade_mode = int(os.getenv("TRADE_MODE", 1))  # 1: Current method, 2: Only trade last 60s with max price 0.98
         self.client = self.get_clob_client()
 
     
@@ -187,10 +188,20 @@ class PolymarketLive:
 
     # --- TRADING LOGIC ---
     def evaluate_trade(self, btc_price, seconds_left):
-        BASE_DIFF = 30
-        STEP_TIME = 60
-        MAX_TIME = 300
-        MAX_PRICE_LIMIT = float(os.getenv("MAX_PRICE_LIMIT", 0.9))  # Default to 0.5 if not set
+        if self.trade_mode == 1:
+            # Option 1: Current method
+            BASE_DIFF = 30
+            STEP_TIME = 60
+            MAX_TIME = 300
+            MAX_PRICE_LIMIT = float(os.getenv("MAX_PRICE_LIMIT", 0.9))  # Default to 0.9 if not set
+        elif self.trade_mode == 2:
+            # Option 2: Only trade last 60s with max price limit to 0.98
+            BASE_DIFF = 30
+            STEP_TIME = 60
+            MAX_TIME = 60  # Only last 60 seconds
+            MAX_PRICE_LIMIT = 0.98
+        else:
+            return None
 
         if not self.current_token_ids:
             return None
