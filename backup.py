@@ -233,14 +233,14 @@ class PolymarketLive:
             window_start = int(now - (now % 300))
             seconds_left = 300 - (now % 300)
                 
-                # Market Rotation
+            # Market Rotation
             if window_start > self.current_market_start:
-                self.strike_price = float(payload.get("value", 0))
+                self.strike_price = self.current_token_ids.get("strike_price", 0.0)
                 self.current_market_start = window_start
                 new_slug = self.get_current_5m_slug()
                 self.current_token_ids = self.get_market_ids(new_slug)
 
-                print(f"\n{'='*40}\n✨ NEW MARKET: {new_slug} | STRIKE: ${btc_price}\n{'='*40} ")
+                print(f"\n{'='*40}\n✨ NEW MARKET: {new_slug} | Starting Bitcoin value: ${btc_price}\nStarting time: {time.ctime(window_start)}\n{'='*40} ")
                 self.traded = False  # Reset trade flag for new market
 
             diff = btc_price - self.strike_price
