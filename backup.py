@@ -14,6 +14,8 @@ from py_clob_client_v2 import ClobClient, OrderArgs, PartialCreateOrderOptions
 from py_clob_client_v2.order_builder.constants import BUY
 from eth_account import Account
 from dotenv import load_dotenv
+import numpy as np
+import collections
 
 load_dotenv()
 
@@ -36,8 +38,49 @@ class PolymarketLive:
         self.current_market_price_no = 0.0
         self.trade_mode = int(os.getenv("TRADE_MODE", 1))  # 1: Current method, 2: Only trade last 60s with max price 0.98
         self.client = self.get_clob_client()
+        self.price_history_buffer = collections.deque(maxlen=100)  # Store last 100 mid-prices for volatility calculation
+    def handle_price_update(self, new_btc_price):
+        """
+        Call this whenever your WebSocket receives a new BTC price.
+        """
+        try:
+            price_float = float(new_btc_price)
+            self.price_history_buffer.append(price_float)
+        except ValueError:
+            pass # Handle malformed data
+    def get_price_history(self, limit=10):
+        """
+        Returns a list of the last N prices from the buffer.
+        """
+        # Convert deque to list to allow standard negative slicing
+        history = list(self.price_history_buffer)
+        
+        if not history:
+            return []
+            
+        return history[-limit:]
+    def get_recent_volatility(self, window=20):
+        """
+        Calculates a volatility multiplier based on the Standard Deviation 
+        of logarithmic returns.
+        """
+        prices = self.get_price_history(limit=window + 1)
+        if len(prices) < window:
+            return 1.0  # Default to neutral if not enough data
 
-    
+        # Calculate Log Returns: ln(P_t / P_{t-1})
+        returns = [np.log(prices[i] / prices[i-1]) for i in range(1, len(prices))]
+        
+        # Calculate Standard Deviation
+        current_std = np.std(returns)
+        
+        # Compare to a 'baseline' (this baseline depends on your market/timeframe)
+        # If current_std is 0.002 and baseline is 0.001, multiplier is 2.0
+        baseline_std = 0.0005 
+        multiplier = current_std / baseline_std
+        
+        # Clamp the multiplier so it doesn't break your logic (e.g., between 0.5 and 3.0)
+        return max(0.5, min(multiplier, 3.0))
     def get_clob_client(self):
         """Initialize and return the CLOB client."""
         global _clob_client
@@ -194,15 +237,35 @@ class PolymarketLive:
             STEP_TIME = 60
             MAX_TIME = 300
             MAX_PRICE_LIMIT = float(os.getenv("MAX_PRICE_LIMIT", 0.9))  # Default to 0.9 if not set
+            vol_factor=1.0  # No volatility adjustment in this mode
+
         elif self.trade_mode == 2:
             # Option 2: Only trade last 60s with max price limit to 0.98
             BASE_DIFF = 30
             STEP_TIME = 60
             MAX_TIME = 60  # Only last 60 seconds
             MAX_PRICE_LIMIT = 0.98
+            vol_factor=1.0  # No volatility adjustment in this mode
+        elif self.trade_mode == 3:
+            # Mode 3: Volatility-Sensitive Scalping
+            vol_factor = self.get_recent_volatility()
+            BASE_DIFF = 30
+            STEP_TIME = 45
+            MAX_TIME = 90
+            MAX_PRICE_LIMIT = 0.92
         else:
             return None
+        price_history = self.get_price_history(limit=5) 
+        if len(price_history) < 5:
+            return None # Not enough data to be sure
+        avg_recent_price = sum(price_history) / len(price_history)
+        is_moving_against_us = (
+        (target_side == 'yes_token' and btc_price < avg_recent_price) or
+        (target_side == 'no_token' and btc_price > avg_recent_price)
+    )
 
+        if is_moving_against_us:
+            return None # Wait for the price to stabilize
         if not self.current_token_ids:
             return None
 
@@ -212,7 +275,7 @@ class PolymarketLive:
         # Dynamic diff calculation
         # e.g. 0–60 → 1 * 30, 60–120 → 2 * 30, etc.
         time_bucket = max(1, int(seconds_left // STEP_TIME))
-        min_diff = BASE_DIFF * time_bucket
+        min_diff = BASE_DIFF * time_bucket * vol_factor
 
         diff = btc_price - self.strike_price
 
@@ -245,7 +308,7 @@ class PolymarketLive:
             payload = data.get("payload", {})
             
             btc_price = float(payload.get("value", 0))
-
+            self.handle_price_update(btc_price)
             now = time.time()
             window_start = int(now - (now % 300))
             seconds_left = 300 - (now % 300)
