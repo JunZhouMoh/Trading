@@ -259,13 +259,6 @@ class PolymarketLive:
         if len(price_history) < 5:
             return None # Not enough data to be sure
         avg_recent_price = sum(price_history) / len(price_history)
-        is_moving_against_us = (
-        (target_side == 'yes_token' and btc_price < avg_recent_price) or
-        (target_side == 'no_token' and btc_price > avg_recent_price)
-    )
-
-        if is_moving_against_us:
-            return None # Wait for the price to stabilize
         if not self.current_token_ids:
             return None
 
@@ -284,7 +277,13 @@ class PolymarketLive:
             else 'no_token' if diff < -min_diff
             else None
         )
+        is_moving_against_us = (
+        (target_side == 'yes_token' and btc_price < avg_recent_price) or
+        (target_side == 'no_token' and btc_price > avg_recent_price)
+    )
 
+        if is_moving_against_us:
+            return None # Wait for the price to stabilize
         if not target_side:
             return None
 
